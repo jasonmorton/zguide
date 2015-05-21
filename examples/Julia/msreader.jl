@@ -4,29 +4,27 @@ import ZMQ
 context = ZMQ.Context()
 
 # Connect to task ventilator
-receiver = Socket(context, ZMQ.PULL)
+receiver = ZMQ.Socket(context, ZMQ.PULL)
 ZMQ.connect(receiver, "tcp://localhost:5557")
 
 # Connect to weather server
-subscriber = Socket(context,ZMQ.SUB)
+subscriber = ZMQ.Socket(context,ZMQ.SUB)
 ZMQ.connect(subscriber,"tcp://localhost:5556")
 ZMQ.set_subscribe(subscriber, "10001")
 
 # Process messages from both sockets
 # We prioritize traffic from the task ventilator
 
-
-# this is a literal translation, which is wrong.
-# Trying to figure out how to get nonblocking behavior from recv
-# also poll is not yet implemented?
 while true
 
     # Process any waiting tasks
     while true
+        println("checking for ventilator tasks")
         try
-            msg = receiver.recv(zmq.DONTWAIT)
+            msg = ZMQ.recv(receiver) #zmq.DONTWAIT is default for recv #hangs because errno()==EAGAIN, enters inner loop in ZMQ.jl
         catch er
-            if isa(er,zmq.Again)
+            println(er)
+            if isa(er,ZMQ.StateError)
                 break
             end
             # process task
@@ -35,10 +33,11 @@ while true
 
     # Process any waiting weather updates
     while true
+        println("processing weather updates")
         try
-            msg = subscriber.recv(zmq.DONTWAIT)
+            msg = ZMQ.recv(subscriber)
         catch er
-            if isa(er,zmq.Again)
+            if isa(er,ZMQ.StateError)
                 break
             end
         end
